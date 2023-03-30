@@ -86,6 +86,10 @@ public class Mondaev implements Runnable
                                         ScenarioStatistic.SUCCESS.and(ScenarioStatistic.OUTSIDE_QUIETPERIOD).and(d -> d.requestRuntimeLimit > 0),
                                         (s, f) -> s.pXX(95, f, d -> (long) d.requestRuntime),
                                         v -> v.isPresent() ? String.valueOf(v.getAsLong()) : "N/A"),
+                        new Column<OptionalLong>("Max Runtime ex QP",
+                                        ScenarioStatistic.OUTSIDE_QUIETPERIOD.and(d -> d.requestRuntimeLimit > 0),
+                                        (s, f) -> s.max(f, d -> (long) d.requestRuntime),
+                                        v -> v.isPresent() ? String.valueOf(v.getAsLong()) : "N/A"),
                         // FCP
                         new Column<OptionalDouble>("Avg FCP Success ex QP",
                                         ScenarioStatistic.SUCCESS.and(ScenarioStatistic.OUTSIDE_QUIETPERIOD).and(d -> d.firstContentfulPaintEventLimit > 0),
@@ -94,6 +98,38 @@ public class Mondaev implements Runnable
                         new Column<OptionalLong>("P95 FCP Success ex QP",
                                         ScenarioStatistic.SUCCESS.and(ScenarioStatistic.OUTSIDE_QUIETPERIOD).and(d -> d.firstContentfulPaintEventLimit > 0),
                                         (s, f) -> s.pXX(95, f, d -> (long) d.firstContentfulPaintEvent),
+                                        v -> v.isPresent() ? String.valueOf(v.getAsLong()) : "N/A"),
+                        new Column<OptionalLong>("Max FCP ex QP",
+                                        ScenarioStatistic.OUTSIDE_QUIETPERIOD.and(d -> d.firstContentfulPaintEventLimit > 0),
+                                        (s, f) -> s.max(f, d -> (long) d.firstContentfulPaintEvent),
+                                        v -> v.isPresent() ? String.valueOf(v.getAsLong()) : "N/A"),
+
+                        // DomContentLoaded
+                        new Column<OptionalDouble>("Avg DCL Success ex QP",
+                                        ScenarioStatistic.SUCCESS.and(ScenarioStatistic.OUTSIDE_QUIETPERIOD).and(d -> d.domContentLoadedEventLimit > 0),
+                                        (s, f) -> s.avg(f, d -> (long) d.domContentLoadedEvent),
+                                        v -> v.isPresent() ? String.valueOf(Math.round(v.getAsDouble())) : "N/A"),
+                        new Column<OptionalLong>("P95 DCL Success ex QP",
+                                        ScenarioStatistic.SUCCESS.and(ScenarioStatistic.OUTSIDE_QUIETPERIOD).and(d -> d.domContentLoadedEventLimit > 0),
+                                        (s, f) -> s.pXX(95, f, d -> (long) d.domContentLoadedEvent),
+                                        v -> v.isPresent() ? String.valueOf(v.getAsLong()) : "N/A"),
+                        new Column<OptionalLong>("Max DCL ex QP",
+                                        ScenarioStatistic.OUTSIDE_QUIETPERIOD.and(d -> d.domContentLoadedEventLimit > 0),
+                                        (s, f) -> s.max(f, d -> (long) d.domContentLoadedEvent),
+                                        v -> v.isPresent() ? String.valueOf(v.getAsLong()) : "N/A"),
+
+                        // loadevent
+                        new Column<OptionalDouble>("Avg LoadEvent Success ex QP",
+                                        ScenarioStatistic.SUCCESS.and(ScenarioStatistic.OUTSIDE_QUIETPERIOD).and(d -> d.loadEventLimit > 0),
+                                        (s, f) -> s.avg(f, d -> (long) d.loadEvent),
+                                        v -> v.isPresent() ? String.valueOf(Math.round(v.getAsDouble())) : "N/A"),
+                        new Column<OptionalLong>("P95 LoadEvent Success ex QP",
+                                        ScenarioStatistic.SUCCESS.and(ScenarioStatistic.OUTSIDE_QUIETPERIOD).and(d -> d.loadEventLimit > 0),
+                                        (s, f) -> s.pXX(95, f, d -> (long) d.loadEvent),
+                                        v -> v.isPresent() ? String.valueOf(v.getAsLong()) : "N/A"),
+                        new Column<OptionalLong>("Max LoadEvent ex QP",
+                                        ScenarioStatistic.OUTSIDE_QUIETPERIOD.and(d -> d.loadEventLimit > 0),
+                                        (s, f) -> s.max(f, d -> (long) d.loadEvent),
                                         v -> v.isPresent() ? String.valueOf(v.getAsLong()) : "N/A")
                         );
 

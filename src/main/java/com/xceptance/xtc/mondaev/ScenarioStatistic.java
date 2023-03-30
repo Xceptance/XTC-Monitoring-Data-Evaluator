@@ -2,7 +2,6 @@ package com.xceptance.xtc.mondaev;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.OptionalDouble;
 import java.util.OptionalLong;
 import java.util.function.Function;
@@ -64,6 +63,14 @@ public class ScenarioStatistic implements Comparable<ScenarioStatistic>
     public OptionalDouble avg(Predicate<Data> filter, Function<Data, Long> supplier)
     {
         return data.stream().filter(filter).map(supplier).mapToLong(d -> d.longValue()).average();
+    }
+
+    /**
+     * Max
+     */
+    public OptionalLong max(Predicate<Data> filter, Function<Data, Long> supplier)
+    {
+        return data.stream().filter(filter).map(supplier).mapToLong(d -> d.longValue()).max();
     }
 
     /**
