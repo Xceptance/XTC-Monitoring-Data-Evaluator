@@ -1,6 +1,12 @@
 package com.xceptance.xtc.mondaev;
 
+import java.io.BufferedReader;
 import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -11,7 +17,10 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
+import com.opencsv.CSVReader;
+import com.opencsv.CSVWriter;
 import com.opencsv.bean.CsvToBeanBuilder;
+import com.opencsv.exceptions.CsvValidationException;
 
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
@@ -34,12 +43,15 @@ public class Mondaev implements Runnable
         // load file data
         try
         {
-            var csvStream = new CsvToBeanBuilder<Data>(new FileReader(fileName))
-                            .withSeparator(',')
-                            .withQuoteChar('"')
-                            .withThrowExceptions(false)
-                            .withOrderedResults(true)
-                            .withType(Data.class).build().stream();
+            var csvStream = new CsvToBeanBuilder<Data>
+            
+            // sanitize CSV
+            (new FileReader(sanitizeCSV(fileName)))
+            .withSeparator(',')
+            .withQuoteChar('"')
+            .withThrowExceptions(false)
+            .withOrderedResults(true)
+            .withType(Data.class).build().stream();
 
             // parse data into objects, fill into buckets by Name
             csvStream.forEach(d ->
@@ -51,6 +63,8 @@ public class Mondaev implements Runnable
         {
             logger.log(Level.SEVERE, e.getMessage(), e);
         }
+
+        System.out.println("\nExtracting Data...\n");
 
         // now, we have all things in scenario buckets, we can start to analyze it
 
@@ -67,6 +81,8 @@ public class Mondaev implements Runnable
                         .distinct()
                         .toList();
         locations.forEach(System.out::println);
+
+        System.out.println("\nCrunching...\n");
 
         var cols = List.of(
                         new Column<String>("Scenario", d -> true, (s, f) -> s.scenario(), s -> s),
@@ -153,6 +169,53 @@ public class Mondaev implements Runnable
                 System.out.println(joiner);
             }
         }
+    }
+    
+    private String sanitizeCSV(String fileToSanitize) 
+    {
+        System.out.println("\nSanitizing...");
+        String sanitizedFileName = "sanitized-" + fileToSanitize; 
+
+        // Sanitization of the input file
+        try (BufferedReader reader = Files.newBufferedReader(Paths.get(fileToSanitize), StandardCharsets.UTF_8);
+                CSVReader csvReader = new CSVReader(reader);
+                FileWriter fileWriter = new FileWriter(sanitizedFileName, StandardCharsets.UTF_8);
+                CSVWriter csvWriter = new CSVWriter(fileWriter)) {
+
+            String[] header = csvReader.readNext(); // Read the header row
+            if (header != null) {
+                csvWriter.writeNext(header); // Write the header row to the output file
+
+                String[] record;
+                while ((record = csvReader.readNext()) != null) {
+                    for (int i = 0; i < record.length; i++) {
+                        String field = record[i];
+
+                        // Try to parse the field as a float and convert it to an integer if possible
+                        try {
+                            float floatValue = Float.parseFloat(field);
+                            int intValue = (int) floatValue;
+                            // Replace the field with the integer value
+                            field = String.valueOf(intValue);
+                        } catch (NumberFormatException e) {
+                            // If parsing fails, keep the original value
+                        }
+
+                        record[i] = field;
+                    }
+                    csvWriter.writeNext(record); // Write the sanitized record to the output file
+                }
+             
+                System.out.println("\nSUCCESS: CSV file sanitized successfully!\n");
+            }
+
+        } catch (IOException | CsvValidationException e) 
+        {
+            System.out.println("\nFAILURE!!! CSV file was not sanitized!\n");
+            e.printStackTrace();
+        }
+        
+        return sanitizedFileName;
     }
 
     public static void main( String[] args )
