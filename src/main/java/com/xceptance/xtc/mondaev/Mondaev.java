@@ -46,7 +46,7 @@ public class Mondaev implements Runnable
             var csvStream = new CsvToBeanBuilder<Data>
             
             // sanitize CSV
-            (new FileReader(sanitizeCSV(fileName)))
+            (new FileReader(fileName))
             .withSeparator(',')
             .withQuoteChar('"')
             .withThrowExceptions(false)
@@ -64,8 +64,6 @@ public class Mondaev implements Runnable
             logger.log(Level.SEVERE, e.getMessage(), e);
         }
 
-        System.out.println("\nExtracting Data...\n");
-
         // now, we have all things in scenario buckets, we can start to analyze it
 
         // what scenarios do we have
@@ -81,9 +79,7 @@ public class Mondaev implements Runnable
                         .distinct()
                         .toList();
         locations.forEach(System.out::println);
-
-        System.out.println("\nCrunching...\n");
-
+        
         var cols = List.of(
                         new Column<String>("Scenario", d -> true, (s, f) -> s.scenario(), s -> s),
                         new Column<String>("Location", d -> true, (s, f) -> s.location(f), s -> s),
@@ -96,56 +92,56 @@ public class Mondaev implements Runnable
                         // Runtime
                         new Column<OptionalDouble>("Avg Runtime Success ex QP",
                                         ScenarioStatistic.SUCCESS.and(ScenarioStatistic.OUTSIDE_QUIETPERIOD).and(d -> d.requestRuntimeLimit > 0),
-                                        (s, f) -> s.avg(f, d -> (long) d.requestRuntime),
+                                        (s, f) -> s.avg(f, d -> d.requestRuntime),
                                         v -> v.isPresent() ? String.valueOf(Math.round(v.getAsDouble())) : "N/A"),
                         new Column<OptionalLong>("P95 Runtime Success ex QP",
                                         ScenarioStatistic.SUCCESS.and(ScenarioStatistic.OUTSIDE_QUIETPERIOD).and(d -> d.requestRuntimeLimit > 0),
-                                        (s, f) -> s.pXX(95, f, d -> (long) d.requestRuntime),
+                                        (s, f) -> s.pXX(95, f, d -> d.requestRuntime),
                                         v -> v.isPresent() ? String.valueOf(v.getAsLong()) : "N/A"),
                         new Column<OptionalLong>("Max Runtime ex QP",
                                         ScenarioStatistic.OUTSIDE_QUIETPERIOD.and(d -> d.requestRuntimeLimit > 0),
-                                        (s, f) -> s.max(f, d -> (long) d.requestRuntime),
+                                        (s, f) -> s.max(f, d -> d.requestRuntime),
                                         v -> v.isPresent() ? String.valueOf(v.getAsLong()) : "N/A"),
                         // FCP
                         new Column<OptionalDouble>("Avg FCP Success ex QP",
                                         ScenarioStatistic.SUCCESS.and(ScenarioStatistic.OUTSIDE_QUIETPERIOD).and(d -> d.firstContentfulPaintEventLimit > 0),
-                                        (s, f) -> s.avg(f, d -> (long) d.firstContentfulPaintEvent),
+                                        (s, f) -> s.avg(f, d -> d.firstContentfulPaintEvent),
                                         v -> v.isPresent() ? String.valueOf(Math.round(v.getAsDouble())) : "N/A"),
                         new Column<OptionalLong>("P95 FCP Success ex QP",
                                         ScenarioStatistic.SUCCESS.and(ScenarioStatistic.OUTSIDE_QUIETPERIOD).and(d -> d.firstContentfulPaintEventLimit > 0),
-                                        (s, f) -> s.pXX(95, f, d -> (long) d.firstContentfulPaintEvent),
+                                        (s, f) -> s.pXX(95, f, d -> d.firstContentfulPaintEvent),
                                         v -> v.isPresent() ? String.valueOf(v.getAsLong()) : "N/A"),
                         new Column<OptionalLong>("Max FCP ex QP",
                                         ScenarioStatistic.OUTSIDE_QUIETPERIOD.and(d -> d.firstContentfulPaintEventLimit > 0),
-                                        (s, f) -> s.max(f, d -> (long) d.firstContentfulPaintEvent),
+                                        (s, f) -> s.max(f, d -> d.firstContentfulPaintEvent),
                                         v -> v.isPresent() ? String.valueOf(v.getAsLong()) : "N/A"),
 
                         // DomContentLoaded
                         new Column<OptionalDouble>("Avg DCL Success ex QP",
                                         ScenarioStatistic.SUCCESS.and(ScenarioStatistic.OUTSIDE_QUIETPERIOD).and(d -> d.domContentLoadedEventLimit > 0),
-                                        (s, f) -> s.avg(f, d -> (long) d.domContentLoadedEvent),
+                                        (s, f) -> s.avg(f, d -> d.domContentLoadedEvent),
                                         v -> v.isPresent() ? String.valueOf(Math.round(v.getAsDouble())) : "N/A"),
                         new Column<OptionalLong>("P95 DCL Success ex QP",
                                         ScenarioStatistic.SUCCESS.and(ScenarioStatistic.OUTSIDE_QUIETPERIOD).and(d -> d.domContentLoadedEventLimit > 0),
-                                        (s, f) -> s.pXX(95, f, d -> (long) d.domContentLoadedEvent),
+                                        (s, f) -> s.pXX(95, f, d -> d.domContentLoadedEvent),
                                         v -> v.isPresent() ? String.valueOf(v.getAsLong()) : "N/A"),
                         new Column<OptionalLong>("Max DCL ex QP",
                                         ScenarioStatistic.OUTSIDE_QUIETPERIOD.and(d -> d.domContentLoadedEventLimit > 0),
-                                        (s, f) -> s.max(f, d -> (long) d.domContentLoadedEvent),
+                                        (s, f) -> s.max(f, d -> d.domContentLoadedEvent),
                                         v -> v.isPresent() ? String.valueOf(v.getAsLong()) : "N/A"),
 
                         // loadevent
                         new Column<OptionalDouble>("Avg LoadEvent Success ex QP",
                                         ScenarioStatistic.SUCCESS.and(ScenarioStatistic.OUTSIDE_QUIETPERIOD).and(d -> d.loadEventLimit > 0),
-                                        (s, f) -> s.avg(f, d -> (long) d.loadEvent),
+                                        (s, f) -> s.avg(f, d -> d.loadEvent),
                                         v -> v.isPresent() ? String.valueOf(Math.round(v.getAsDouble())) : "N/A"),
                         new Column<OptionalLong>("P95 LoadEvent Success ex QP",
                                         ScenarioStatistic.SUCCESS.and(ScenarioStatistic.OUTSIDE_QUIETPERIOD).and(d -> d.loadEventLimit > 0),
-                                        (s, f) -> s.pXX(95, f, d -> (long) d.loadEvent),
+                                        (s, f) -> s.pXX(95, f, d -> d.loadEvent),
                                         v -> v.isPresent() ? String.valueOf(v.getAsLong()) : "N/A"),
                         new Column<OptionalLong>("Max LoadEvent ex QP",
                                         ScenarioStatistic.OUTSIDE_QUIETPERIOD.and(d -> d.loadEventLimit > 0),
-                                        (s, f) -> s.max(f, d -> (long) d.loadEvent),
+                                        (s, f) -> s.max(f, d -> d.loadEvent),
                                         v -> v.isPresent() ? String.valueOf(v.getAsLong()) : "N/A")
                         );
 
@@ -169,53 +165,6 @@ public class Mondaev implements Runnable
                 System.out.println(joiner);
             }
         }
-    }
-    
-    private String sanitizeCSV(String fileToSanitize) 
-    {
-        System.out.println("\nSanitizing...");
-        String sanitizedFileName = "sanitized-" + fileToSanitize; 
-
-        // Sanitization of the input file
-        try (BufferedReader reader = Files.newBufferedReader(Paths.get(fileToSanitize), StandardCharsets.UTF_8);
-                CSVReader csvReader = new CSVReader(reader);
-                FileWriter fileWriter = new FileWriter(sanitizedFileName, StandardCharsets.UTF_8);
-                CSVWriter csvWriter = new CSVWriter(fileWriter)) {
-
-            String[] header = csvReader.readNext(); // Read the header row
-            if (header != null) {
-                csvWriter.writeNext(header); // Write the header row to the output file
-
-                String[] record;
-                while ((record = csvReader.readNext()) != null) {
-                    for (int i = 0; i < record.length; i++) {
-                        String field = record[i];
-
-                        // Try to parse the field as a float and convert it to an integer if possible
-                        try {
-                            float floatValue = Float.parseFloat(field);
-                            int intValue = (int) floatValue;
-                            // Replace the field with the integer value
-                            field = String.valueOf(intValue);
-                        } catch (NumberFormatException e) {
-                            // If parsing fails, keep the original value
-                        }
-
-                        record[i] = field;
-                    }
-                    csvWriter.writeNext(record); // Write the sanitized record to the output file
-                }
-             
-                System.out.println("\nSUCCESS: CSV file sanitized successfully!\n");
-            }
-
-        } catch (IOException | CsvValidationException e) 
-        {
-            System.out.println("\nFAILURE!!! CSV file was not sanitized!\n");
-            e.printStackTrace();
-        }
-        
-        return sanitizedFileName;
     }
 
     public static void main( String[] args )

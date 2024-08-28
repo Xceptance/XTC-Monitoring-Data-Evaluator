@@ -58,65 +58,65 @@ public class Data
 
     // Action Runtime Limit
     @CsvBindByName(column = "Action Runtime Limit")
-    public int actionRuntimeLimit;
+    public double actionRuntimeLimit;
 
     // Action Runtime Value
     @CsvBindByName(column = "Action Runtime Value")
-    public int actionRuntime;
+    public double actionRuntime;
 
     // Transaction Runtime Limit
     @CsvBindByName(column = "Transaction Runtime Limit")
-    public int transactionRuntimeLimit;
+    public double transactionRuntimeLimit;
 
     // Transaction Runtime Value
     @CsvBindByName(column = "Transaction Runtime Value")
-    public int transactionRuntime;
+    public double transactionRuntime;
 
     // DOMContentLoaded Event Limit
     @CsvBindByName(column = "DOMContentLoaded Event Limit")
-    public int domContentLoadedEventLimit;
+    public double domContentLoadedEventLimit;
 
     // DOMContentLoaded Event Value
     @CsvBindByName(column = "DOMContentLoaded Event Value")
-    public int domContentLoadedEvent;
+    public double domContentLoadedEvent;
 
     // Load Event Limit
     @CsvBindByName(column = "Load Event Limit")
-    public int loadEventLimit;
+    public double loadEventLimit;
 
     // Load Event Value
     @CsvBindByName(column = "Load Event Value")
-    public int loadEvent;
+    public double loadEvent;
 
     // FirstPaint Event Limit
     @CsvBindByName(column = "FirstPaint Event Limit")
-    public int firstPaintEventLimit;
+    public double firstPaintEventLimit;
 
     // FirstPaint Event Value
     @CsvBindByName(column = "FirstPaint Event Value")
-    public int firstPaintEvent;
+    public double firstPaintEvent;
 
     // FirstContentfulPaint Event Limit
     @CsvBindByName(column = "FirstContentfulPaint Event Limit")
-    public int firstContentfulPaintEventLimit;
+    public double firstContentfulPaintEventLimit;
 
     // FirstContentfulPaint Event Value
     @CsvBindByName(column = "FirstContentfulPaint Event Value")
-    public int firstContentfulPaintEvent;
+    public double firstContentfulPaintEvent;
 
     // Request Runtime Limit
     @CsvBindByName(column = "Request Runtime Limit")
-    public int requestRuntimeLimit;
+    public double requestRuntimeLimit;
 
     // Request Runtime Value
     @CsvBindByName(column = "Request Runtime Value")
-    public int requestRuntime;
+    public double requestRuntime;
 
     // Request Errors Limit
     @CsvBindByName(column = "Request Errors Limit")
-    public int requestErrorsLimit;
+    public double requestErrorsLimit;
 
     // Request Errors Value
     @CsvBindByName(column = "Request Errors Value")
-    public int requestErrors;
+    public double requestErrors;
 }

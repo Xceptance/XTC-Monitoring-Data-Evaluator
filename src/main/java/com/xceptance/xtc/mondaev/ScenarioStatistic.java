@@ -60,25 +60,25 @@ public class ScenarioStatistic implements Comparable<ScenarioStatistic>
     /**
      * Avg
      */
-    public OptionalDouble avg(Predicate<Data> filter, Function<Data, Long> supplier)
+    public OptionalDouble avg(Predicate<Data> filter, Function<Data, Double> supplier)
     {
-        return data.stream().filter(filter).map(supplier).mapToLong(d -> d.longValue()).average();
+        return data.stream().filter(filter).map(supplier).mapToLong(d -> (long) d.doubleValue()).average();
     }
 
     /**
      * Max
      */
-    public OptionalLong max(Predicate<Data> filter, Function<Data, Long> supplier)
+    public OptionalLong max(Predicate<Data> filter, Function<Data, Double> supplier)
     {
-        return data.stream().filter(filter).map(supplier).mapToLong(d -> d.longValue()).max();
+        return data.stream().filter(filter).map(supplier).mapToLong(d -> (long) d.doubleValue()).max();
     }
 
     /**
      * PXX
      */
-    public OptionalLong pXX(int percentile, Predicate<Data> filter, Function<Data, Long> supplier)
+    public OptionalLong pXX(int percentile, Predicate<Data> filter, Function<Data, Double> supplier)
     {
-        var l = data.stream().filter(filter).map(supplier).sorted().toList();
+        var l = data.stream().filter(filter).map(supplier).map(d -> (long) d.doubleValue()).sorted().toList();
         final int pos = (int)(l.size() * ((double)(percentile/100)));
 
         return l.size() > 0 ? OptionalLong.of(l.get(pos)) : OptionalLong.empty();
