@@ -1,12 +1,12 @@
 package com.xceptance.xtc.mondaev;
 
 import java.io.FileReader;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.OptionalDouble;
 import java.util.OptionalLong;
 import java.util.StringJoiner;
+import java.util.TreeMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -29,7 +29,7 @@ public class Mondaev implements Runnable
     public void run()
     {
         // our data home
-        final Map<String, ScenarioStatistic> buckets = new HashMap<>();
+        final Map<String, ScenarioStatistic> buckets = new TreeMap<>();
 
         // load file data
         try
@@ -44,7 +44,7 @@ public class Mondaev implements Runnable
             // parse data into objects, fill into buckets by Name
             csvStream.forEach(d ->
             {
-                buckets.compute(d.scenario, (k, v) -> v == null ? new ScenarioStatistic(k) : v.add(d));
+                buckets.compute(d.scenario.trim().toUpperCase(), (k, v) -> v == null ? new ScenarioStatistic(k) : v.add(d));
             });
         }
         catch (Exception e)
