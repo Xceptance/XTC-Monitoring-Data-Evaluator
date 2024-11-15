@@ -79,7 +79,7 @@ public class ScenarioStatistic implements Comparable<ScenarioStatistic>
     public OptionalLong pXX(int percentile, Predicate<Data> filter, Function<Data, Long> supplier)
     {
         var l = data.stream().filter(filter).map(supplier).sorted().toList();
-        final int pos = (int)(l.size() * ((double)(percentile/100)));
+        final int pos = (int)((double)l.size() * (percentile/100.0));
 
         return l.size() > 0 ? OptionalLong.of(l.get(pos)) : OptionalLong.empty();
     }
