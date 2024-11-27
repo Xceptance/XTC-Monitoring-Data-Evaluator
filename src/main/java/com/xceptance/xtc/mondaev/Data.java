@@ -21,7 +21,18 @@ public class Data
 
     // Scenario
     @CsvBindByName(column = "Scenario", required = true)
-    public String scenario;
+    private String scenario;
+    // our final presentation in uppercase
+    private String scenarioNormalized;
+
+    public String scenario()
+    {
+    	if (this.scenarioNormalized == null)
+    	{
+    		this.scenarioNormalized = scenario.trim().toUpperCase();
+    	}
+    	return this.scenarioNormalized;
+    }
 
     // Executor Location
     @CsvBindByName(column = "Executor Location", required = true)
@@ -46,6 +57,10 @@ public class Data
     {
         return withinQuietPeriod.equalsIgnoreCase("Yes");
     }
+    public boolean outsideQuietPeriod()
+    {
+        return !withinQuietPeriod();
+    }
 
     // Reason
     @CsvBindByName(column = "Reason")
@@ -61,7 +76,7 @@ public class Data
 
     // Action Runtime Limit
     @CsvBindByName(column = "Action Runtime Limit", locale = DEFAULT_LOCALE)
-    public int actionRuntimeLimit;
+    public int actionRuntimeLimit = -1;
 
     // Action Runtime Value
     @CsvBindByName(column = "Action Runtime Value", locale = DEFAULT_LOCALE)
@@ -69,7 +84,7 @@ public class Data
 
     // Transaction Runtime Limit
     @CsvBindByName(column = "Transaction Runtime Limit", locale = DEFAULT_LOCALE)
-    public int transactionRuntimeLimit;
+    public int transactionRuntimeLimit = -1;
 
     // Transaction Runtime Value
     @CsvBindByName(column = "Transaction Runtime Value", locale = DEFAULT_LOCALE)
@@ -77,7 +92,7 @@ public class Data
 
     // DOMContentLoaded Event Limit
     @CsvBindByName(column = "DOMContentLoaded Event Limit", locale = DEFAULT_LOCALE)
-    public int domContentLoadedEventLimit;
+    public int domContentLoadedEventLimit = -1;
 
     // DOMContentLoaded Event Value
     @CsvBindByName(column = "DOMContentLoaded Event Value", locale = DEFAULT_LOCALE)
@@ -85,7 +100,7 @@ public class Data
 
     // Load Event Limit
     @CsvBindByName(column = "Load Event Limit", locale = DEFAULT_LOCALE)
-    public int loadEventLimit;
+    public int loadEventLimit = -1;
 
     // Load Event Value
     @CsvBindByName(column = "Load Event Value", locale = DEFAULT_LOCALE)
@@ -93,7 +108,7 @@ public class Data
 
     // FirstPaint Event Limit
     @CsvBindByName(column = "FirstPaint Event Limit", locale = DEFAULT_LOCALE)
-    public int firstPaintEventLimit;
+    public int firstPaintEventLimit = -1;
 
     // FirstPaint Event Value
     @CsvBindByName(column = "FirstPaint Event Value", locale = DEFAULT_LOCALE)
@@ -101,7 +116,7 @@ public class Data
 
     // FirstContentfulPaint Event Limit
     @CsvBindByName(column = "FirstContentfulPaint Event Limit", locale = DEFAULT_LOCALE)
-    public int firstContentfulPaintEventLimit;
+    public int firstContentfulPaintEventLimit = -1;
 
     // FirstContentfulPaint Event Value
     @CsvBindByName(column = "FirstContentfulPaint Event Value", locale = DEFAULT_LOCALE)
@@ -109,7 +124,7 @@ public class Data
 
     // Request Runtime Limit
     @CsvBindByName(column = "Request Runtime Limit", locale = DEFAULT_LOCALE)
-    public int requestRuntimeLimit;
+    public int requestRuntimeLimit = -1;
 
     // Request Runtime Value
     @CsvBindByName(column = "Request Runtime Value", locale = DEFAULT_LOCALE)
@@ -117,9 +132,58 @@ public class Data
 
     // Request Errors Limit
     @CsvBindByName(column = "Request Errors Limit", locale = DEFAULT_LOCALE)
-    public int requestErrorsLimit;
+    public int requestErrorsLimit = -1;
 
     // Request Errors Value
     @CsvBindByName(column = "Request Errors Value", locale = DEFAULT_LOCALE)
     public int requestErrors;
+
+    //
+    @CsvBindByName(column = "Cumulative Layout Shift Limit", locale = DEFAULT_LOCALE)
+    public double clsLimit = -1;
+
+    //
+    @CsvBindByName(column = "Cumulative Layout Shift Value", locale = DEFAULT_LOCALE)
+    public double cls = -1;
+
+    //
+    @CsvBindByName(column = "First Contentful Paint Limit", locale = DEFAULT_LOCALE)
+    public int fcpLimit = -1;
+
+    //
+    @CsvBindByName(column = "First Contentful Paint Value", locale = DEFAULT_LOCALE)
+    public int fcp = -1;
+
+    //
+    @CsvBindByName(column = "First Input Delay Limit", locale = DEFAULT_LOCALE)
+    public int fidLimit = -1;
+
+    //
+    @CsvBindByName(column = "First Input Delay Value", locale = DEFAULT_LOCALE)
+    public int fid = -1;
+
+    //
+    @CsvBindByName(column = "Interaction to Next Paint Limit", locale = DEFAULT_LOCALE)
+    public int inpLimit = -1;
+
+    //
+    @CsvBindByName(column = "Interaction to Next Paint Value", locale = DEFAULT_LOCALE)
+    public int inp = -1;
+
+    //
+    @CsvBindByName(column = "Largest Contentful Paint Limit", locale = DEFAULT_LOCALE)
+    public int lcpLimit = -1;
+
+    //
+    @CsvBindByName(column = "Largest Contentful Paint Value", locale = DEFAULT_LOCALE)
+    public int lcp = -1;
+
+    //
+    @CsvBindByName(column = "Time to First Byte Limit", locale = DEFAULT_LOCALE)
+    public int ttfbLimit = -1;
+
+    //
+    @CsvBindByName(column = "Time to First Byte Value", locale = DEFAULT_LOCALE)
+    public int ttfb = -1;
+
 }

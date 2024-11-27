@@ -1,163 +1,360 @@
 package com.xceptance.xtc.mondaev;
 
+import java.io.BufferedReader;
 import java.io.FileReader;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
-import java.util.Map;
-import java.util.OptionalDouble;
-import java.util.OptionalLong;
-import java.util.StringJoiner;
-import java.util.TreeMap;
+import java.util.function.BiPredicate;
+import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import com.opencsv.bean.CsvToBeanBuilder;
+import com.xceptance.xtc.mondaev.Database.Result;
+import com.xceptance.xtc.mondaev.cells.Cell;
+import com.xceptance.xtc.mondaev.cells.CountCell;
+import com.xceptance.xtc.mondaev.cells.LongAvgCell;
+import com.xceptance.xtc.mondaev.cells.LongMaxCell;
+import com.xceptance.xtc.mondaev.cells.LongPXXCell;
+import com.xceptance.xtc.mondaev.cells.StaticStringCell;
 
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
-@Command(name = "Mondaev", version = "Mondaev 1.0", mixinStandardHelpOptions = true)
+@Command(name = "Mondaev", version = "Mondaev 2.0", mixinStandardHelpOptions = true)
 public class Mondaev implements Runnable
 {
-    private final Logger logger = Logger.getLogger(Mondaev.class.getName());
+	private final Logger logger = Logger.getLogger(Mondaev.class.getName());
 
-    @Option(names = { "-f", "--filename" }, required = true, description = "The input file of a certain month of monitoring")
-    String fileName;
+	@Option(names = { "-d", "--directory" }, required = true, description = "The input directory with monitoring files. All CSVs will be read.")
+	String directory;
 
-    @Override
-    public void run()
-    {
-        // our data home
-        final Map<String, ScenarioStatistic> buckets = new TreeMap<>();
+	@Override
+	public void run()
+	{
+		// get us all files that are CSV in the directory, no traversal of dirs
+		final BiPredicate<Path, BasicFileAttributes>  matcher = (path, attr) -> {
+			final var b = attr.isRegularFile() && path.getFileName().toString().endsWith(".csv");
+			return b;
+		};
 
-        // load file data
-        try
-        {
-            var csvStream = new CsvToBeanBuilder<Data>(new FileReader(fileName))
-                            .withSeparator(',')
-                            .withQuoteChar('"')
-                            .withThrowExceptions(false)
-                            .withOrderedResults(true)
-                            .withType(Data.class).build().stream();
+		final List<Path> files;
+		try
+		{
+			files = Files.find(Path.of(directory), 1, matcher).toList();
+		}
+		catch (IOException e)
+		{
+			System.err.println("Something is wrong with the given directory: " + Path.of(directory));
+			return;
+		}
 
-            // parse data into objects, fill into buckets by Name
-            csvStream.forEach(d ->
-            {
-                buckets.compute(d.scenario.trim().toUpperCase(), (k, v) -> v == null ? new ScenarioStatistic(k) : v.add(d));
-            });
-        }
-        catch (Exception e)
-        {
-            logger.log(Level.SEVERE, e.getMessage(), e);
-        }
+		// our data home
+		final var database = new Database();
 
-        // now, we have all things in scenario buckets, we can start to analyze it
+		// ok, we got all data, now we need to know the min and max date to later
+		// figure out from which to which month we want to go
+		LocalDateTime min = LocalDateTime.MAX;
+		LocalDateTime max = LocalDateTime.MIN;
 
-        // what scenarios do we have
-        System.out.println("==== Scenarios");
-        var scenarios = buckets.entrySet().stream().map(e -> e.getValue().scenario()).sorted().distinct().toList();
-        scenarios.forEach(System.out::println);
+		// load file data
+		for (var file : files)
+		{
+			try
+			{
+				final long start = System.currentTimeMillis();
 
-        // what locations do we have
-        System.out.println("==== Locations");
-        var locations = buckets.entrySet().stream()
-                        .flatMap(e -> e.getValue().entries(d -> true, d -> d.location).stream())
-                        .sorted()
-                        .distinct()
-                        .toList();
-        locations.forEach(System.out::println);
+				var rows = new CsvToBeanBuilder<Data>(new BufferedReader(new FileReader(file.toFile())))
+						.withSeparator(',')
+						.withQuoteChar('"')
+						.withThrowExceptions(false)
+						.withOrderedResults(true)
+						.withType(Data.class).build().parse();
 
-        var cols = List.of(
-                        new Column<String>("Scenario", d -> true, (s, f) -> s.scenario(), s -> s),
-                        new Column<String>("Location", d -> true, (s, f) -> s.location(f), s -> s),
-                        new Column<Long>("Total", d -> true, (s, f) -> s.count(f), s -> Long.toString(s)),
-                        new Column<Long>("Success", ScenarioStatistic.SUCCESS, (s, f) -> s.count(f), s -> Long.toString(s)),
-                        new Column<Long>("Failed", ScenarioStatistic.FAILED, (s, f) -> s.count(f), s -> Long.toString(s)),
-                        new Column<Long>("Total ex QP", ScenarioStatistic.OUTSIDE_QUIETPERIOD, (s, f) -> s.count(f), s -> Long.toString(s)),
-                        new Column<Long>("Success ex QP", ScenarioStatistic.SUCCESS.and(ScenarioStatistic.OUTSIDE_QUIETPERIOD), (s, f) -> s.count(f), s -> Long.toString(s)),
-                        new Column<Long>("Failed ex QP", ScenarioStatistic.FAILED.and(ScenarioStatistic.OUTSIDE_QUIETPERIOD), (s, f) -> s.count(f), s -> Long.toString(s)),
-                        // Runtime
-                        new Column<OptionalDouble>("Avg Runtime Success ex QP",
-                                        ScenarioStatistic.SUCCESS.and(ScenarioStatistic.OUTSIDE_QUIETPERIOD).and(d -> d.requestRuntimeLimit > 0),
-                                        (s, f) -> s.avg(f, d -> (long) d.requestRuntime),
-                                        v -> v.isPresent() ? String.valueOf(Math.round(v.getAsDouble())) : "N/A"),
-                        new Column<OptionalLong>("P95 Runtime Success ex QP",
-                                        ScenarioStatistic.SUCCESS.and(ScenarioStatistic.OUTSIDE_QUIETPERIOD).and(d -> d.requestRuntimeLimit > 0),
-                                        (s, f) -> s.pXX(95, f, d -> (long) d.requestRuntime),
-                                        v -> v.isPresent() ? String.valueOf(v.getAsLong()) : "N/A"),
-                        new Column<OptionalLong>("Max Runtime ex QP",
-                                        ScenarioStatistic.OUTSIDE_QUIETPERIOD.and(d -> d.requestRuntimeLimit > 0),
-                                        (s, f) -> s.max(f, d -> (long) d.requestRuntime),
-                                        v -> v.isPresent() ? String.valueOf(v.getAsLong()) : "N/A"),
-                        // FCP
-                        new Column<OptionalDouble>("Avg FCP Success ex QP",
-                                        ScenarioStatistic.SUCCESS.and(ScenarioStatistic.OUTSIDE_QUIETPERIOD).and(d -> d.firstContentfulPaintEventLimit > 0),
-                                        (s, f) -> s.avg(f, d -> (long) d.firstContentfulPaintEvent),
-                                        v -> v.isPresent() ? String.valueOf(Math.round(v.getAsDouble())) : "N/A"),
-                        new Column<OptionalLong>("P95 FCP Success ex QP",
-                                        ScenarioStatistic.SUCCESS.and(ScenarioStatistic.OUTSIDE_QUIETPERIOD).and(d -> d.firstContentfulPaintEventLimit > 0),
-                                        (s, f) -> s.pXX(95, f, d -> (long) d.firstContentfulPaintEvent),
-                                        v -> v.isPresent() ? String.valueOf(v.getAsLong()) : "N/A"),
-                        new Column<OptionalLong>("Max FCP ex QP",
-                                        ScenarioStatistic.OUTSIDE_QUIETPERIOD.and(d -> d.firstContentfulPaintEventLimit > 0),
-                                        (s, f) -> s.max(f, d -> (long) d.firstContentfulPaintEvent),
-                                        v -> v.isPresent() ? String.valueOf(v.getAsLong()) : "N/A"),
+				// all into our list;
+				int count = 0;
+				for (var row : rows)
+				{
+					var startTime = row.startTime;
 
-                        // DomContentLoaded
-                        new Column<OptionalDouble>("Avg DCL Success ex QP",
-                                        ScenarioStatistic.SUCCESS.and(ScenarioStatistic.OUTSIDE_QUIETPERIOD).and(d -> d.domContentLoadedEventLimit > 0),
-                                        (s, f) -> s.avg(f, d -> (long) d.domContentLoadedEvent),
-                                        v -> v.isPresent() ? String.valueOf(Math.round(v.getAsDouble())) : "N/A"),
-                        new Column<OptionalLong>("P95 DCL Success ex QP",
-                                        ScenarioStatistic.SUCCESS.and(ScenarioStatistic.OUTSIDE_QUIETPERIOD).and(d -> d.domContentLoadedEventLimit > 0),
-                                        (s, f) -> s.pXX(95, f, d -> (long) d.domContentLoadedEvent),
-                                        v -> v.isPresent() ? String.valueOf(v.getAsLong()) : "N/A"),
-                        new Column<OptionalLong>("Max DCL ex QP",
-                                        ScenarioStatistic.OUTSIDE_QUIETPERIOD.and(d -> d.domContentLoadedEventLimit > 0),
-                                        (s, f) -> s.max(f, d -> (long) d.domContentLoadedEvent),
-                                        v -> v.isPresent() ? String.valueOf(v.getAsLong()) : "N/A"),
+					min = min.compareTo(startTime) < 0 ? min : startTime;
+					max = max.compareTo(startTime) > 0 ? max : startTime;
 
-                        // loadevent
-                        new Column<OptionalDouble>("Avg LoadEvent Success ex QP",
-                                        ScenarioStatistic.SUCCESS.and(ScenarioStatistic.OUTSIDE_QUIETPERIOD).and(d -> d.loadEventLimit > 0),
-                                        (s, f) -> s.avg(f, d -> (long) d.loadEvent),
-                                        v -> v.isPresent() ? String.valueOf(Math.round(v.getAsDouble())) : "N/A"),
-                        new Column<OptionalLong>("P95 LoadEvent Success ex QP",
-                                        ScenarioStatistic.SUCCESS.and(ScenarioStatistic.OUTSIDE_QUIETPERIOD).and(d -> d.loadEventLimit > 0),
-                                        (s, f) -> s.pXX(95, f, d -> (long) d.loadEvent),
-                                        v -> v.isPresent() ? String.valueOf(v.getAsLong()) : "N/A"),
-                        new Column<OptionalLong>("Max LoadEvent ex QP",
-                                        ScenarioStatistic.OUTSIDE_QUIETPERIOD.and(d -> d.loadEventLimit > 0),
-                                        (s, f) -> s.max(f, d -> (long) d.loadEvent),
-                                        v -> v.isPresent() ? String.valueOf(v.getAsLong()) : "N/A")
-                        );
+					database.add(row);
+					count++;
+				}
 
-        System.out.println();
-        System.out.println("==== Final");
+				System.out.format("Read %s with %d lines in %d ms.%n", file, count, System.currentTimeMillis() - start);
+			}
+			catch (Exception e)
+			{
+				logger.log(Level.SEVERE, e.getMessage(), e);
+			}
+		}
 
-        // header
-        System.out.println(cols.stream().map(d -> d.name).collect(Collectors.joining(",")));
+		System.out.format("%n=== Analyzing from %s to %s%n", min, max);
 
-        for (var s : buckets.entrySet().stream().map(e -> e.getValue()).sorted().toList())
-        {
-            for (var l : locations)
-            {
-                var joiner = new StringJoiner(",");
+		// all locations
 
-                // values
-                for (var col : cols)
-                {
-                    joiner.add(col.apply(s, l));
-                }
-                System.out.println(joiner);
-            }
-        }
-    }
+		// all scenarios and locations
+		final var locations = database.locations();
+		final var scenarios = database.scenarios();
 
-    public static void main( String[] args )
-    {
-        int exitCode = new CommandLine(new Mondaev()).execute(args);
-        System.exit(exitCode);
-    }
+		System.out.println("=== Locations");
+		locations.forEach(System.out::println);
+
+		System.out.println("=== Scenarios");
+		scenarios.forEach(System.out::println);
+
+		// we spin over scenarios first and create two column for the locations
+		for (String scenario : scenarios)
+		{
+			// now we need the locations
+			for (String location : locations)
+			{
+				// ok, give us the prefiltered data set
+				final var result = database.where(
+						Database.byLocationFilter(location)
+						.and(Database.byScenarioFilter(scenario)));
+
+				// now, we have all things we can give it a try with
+				// columns by year-month
+				var current = min.truncatedTo(ChronoUnit.DAYS);
+				int line = 0;
+				while (current.compareTo(max) <= 0)
+				{
+					// ok, our date us the row key
+					final var timeFilteredResult = result.where(
+							Database.byTimeFilter(current.getYear(), current.getMonthValue()));
+
+					// sweet, we have change what we need, so let's do the column magic
+					processRow(
+							scenario, location,
+							String.format("%s%02d", current.getYear(), current.getMonthValue()),
+							timeFilteredResult,
+							line++ == 0);
+
+					current = current.plusMonths(1);
+				}
+
+				System.out.println();
+			}
+		}
+	}
+
+	private void processRow(
+			final String scenario, final String location,
+			final String rowKey, final Result result, final boolean printHeader)
+	{
+		final Function<Long, String> LONGFORMATTER = l -> String.format("%d", l);
+		final Function<Double, String> DOUBLEFORMATTER = l -> String.format("%.1f", l);
+
+		final List<Cell<?>> columns = List.of(
+				new StaticStringCell(
+						"Year/Month",
+						d -> true,
+						d -> "",
+						s -> rowKey
+						),
+				new StaticStringCell(
+						"Scenario",
+						d -> true,
+						d -> "",
+						s -> scenario
+						),
+				new StaticStringCell(
+						"Location",
+						d -> true,
+						d -> "",
+						s -> location
+						),
+				new CountCell(
+						"Total",
+						d -> true,
+						d -> 1l,
+						LONGFORMATTER
+						),
+				new CountCell(
+						"Success",
+						d -> d.success(),
+						d -> 1l,
+						LONGFORMATTER
+						),
+				new CountCell(
+						"Failed",
+						d -> d.failed(),
+						d -> 1l,
+						LONGFORMATTER
+						),
+				new CountCell(
+						"Total ex QP",
+						d ->  d.outsideQuietPeriod(),
+						d -> 1l,
+						LONGFORMATTER
+						),
+				new CountCell(
+						"Success ex QP",
+						d -> d.success() && d.outsideQuietPeriod(),
+						d -> 1l,
+						LONGFORMATTER
+						),
+				new CountCell(
+						"Failed ex QP",
+						d -> d.failed() && d.outsideQuietPeriod(),
+						d -> 1l,
+						LONGFORMATTER
+						),
+				// Runtime
+				new LongAvgCell(
+						"Avg Request Runtime Success ex QP",
+						d -> d.success() && d.outsideQuietPeriod() && d.requestRuntimeLimit > 0,
+						d -> (long) d.requestRuntime,
+						LONGFORMATTER
+						),
+				new LongPXXCell(
+						"P95 Request Runtime Success ex QP",
+						d -> d.success() && d.outsideQuietPeriod() && d.requestRuntimeLimit > 0,
+						d -> (long) d.requestRuntime,
+						LONGFORMATTER,
+						95
+						),
+				new LongMaxCell(
+						"Max Request Runtime Success ex QP",
+						d -> d.success() && d.outsideQuietPeriod() && d.requestRuntimeLimit > 0,
+						d -> (long) d.requestRuntime,
+						LONGFORMATTER
+						),
+				new LongMaxCell(
+						"Max Request Runtime Failed ex QP",
+						d -> d.failed() && d.outsideQuietPeriod() && d.requestRuntimeLimit > 0,
+						d -> (long) d.requestRuntime,
+						LONGFORMATTER
+						),
+
+				// FCP
+				new LongAvgCell(
+						"Avg FCP ex QP",
+						d -> d.success() && d.outsideQuietPeriod() && d.firstContentfulPaintEventLimit > 0,
+						d -> (long) d.firstContentfulPaintEvent,
+						LONGFORMATTER
+						),
+				new LongPXXCell(
+						"P95 FCP ex QP",
+						d -> d.success() && d.outsideQuietPeriod() && d.firstContentfulPaintEventLimit > 0,
+						d -> (long) d.firstContentfulPaintEvent,
+						LONGFORMATTER,
+						95
+						),
+				new LongMaxCell(
+						"Max FCP ex QP",
+						d -> d.success() && d.outsideQuietPeriod() && d.firstContentfulPaintEventLimit > 0,
+						d -> (long) d.firstContentfulPaintEvent,
+						LONGFORMATTER
+						),
+				new LongMaxCell(
+						"Max FCP ex QP",
+						d -> d.failed() && d.outsideQuietPeriod() && d.firstContentfulPaintEventLimit > 0,
+						d -> (long) d.firstContentfulPaintEvent,
+						LONGFORMATTER
+						),
+				// LCP
+				new LongAvgCell(
+						"Avg LCP Success ex QP",
+						d -> d.success() && d.outsideQuietPeriod() && d.lcpLimit > 0,
+						d -> (long) d.lcp,
+						LONGFORMATTER
+						),
+				new LongPXXCell(
+						"P95 LCP ex QP",
+						d -> d.success() && d.outsideQuietPeriod() && d.lcpLimit > 0,
+						d -> (long) d.lcp,
+						LONGFORMATTER,
+						95
+						),
+				new LongMaxCell(
+						"Max LCP ex QP",
+						d -> d.success() && d.outsideQuietPeriod() && d.lcpLimit > 0,
+						d -> (long) d.lcp,
+						LONGFORMATTER
+						),
+				new LongMaxCell(
+						"Max LCP Failed ex QP",
+						d -> d.failed() && d.outsideQuietPeriod() && d.lcpLimit > 0,
+						d -> (long) d.lcp,
+						LONGFORMATTER
+						),
+
+				// TTFB
+				new LongAvgCell(
+						"Avg TTFB Success ex QP",
+						d -> d.success() && d.outsideQuietPeriod() && d.ttfbLimit > 0,
+						d -> (long) d.ttfb,
+						LONGFORMATTER
+						),
+				new LongPXXCell(
+						"P95 TTFB ex QP",
+						d -> d.success() && d.outsideQuietPeriod() && d.ttfbLimit > 0,
+						d -> (long) d.ttfb,
+						LONGFORMATTER,
+						95
+						),
+				new LongMaxCell(
+						"Max TTFB ex QP",
+						d -> d.success() && d.outsideQuietPeriod() && d.ttfbLimit > 0,
+						d -> (long) d.ttfb,
+						LONGFORMATTER
+						),
+				new LongMaxCell(
+						"Max TTFB Failed ex QP",
+						d -> d.failed() && d.outsideQuietPeriod() && d.ttfbLimit > 0,
+						d -> (long) d.ttfb,
+						LONGFORMATTER
+						)
+				);
+
+		for (var row : result.data())
+		{
+			for (var column : columns)
+			{
+				column.process(row);
+			}
+		}
+
+		// header
+		if (printHeader)
+		{
+			System.out.println(columns.stream().map(Cell::header).collect(Collectors.joining(",")));
+		}
+
+		// values
+		System.out.println(columns.stream().map(Cell::value).collect(Collectors.joining(",")));
+
+		//		for (var s : buckets.entrySet().stream().map(e -> e.getValue()).sorted().toList())
+		//		{
+		//			for (var l : locations)
+		//			{
+		//				var joiner = new StringJoiner(",");
+		//
+		//				// values
+		//				for (var col : cols)
+		//				{
+		//					joiner.add(col.apply(s, l));
+		//				}
+		//				System.out.println(joiner);
+		//			}
+		//		}
+	}
+
+	public static void main( String[] args )
+	{
+		int exitCode = new CommandLine(new Mondaev()).execute(args);
+		System.exit(exitCode);
+	}
 }
