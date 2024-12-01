@@ -10,8 +10,8 @@ import com.xceptance.xtc.mondaev.Data;
  */
 public class Cell<T>
 {
-	public final String NOTAVAILABLE = "N/A";
-	
+	public final String NOTAVAILABLE = "";
+
     public final String columnName;
     final Predicate<Data> filter;
     final Function<Data, T> extractor;

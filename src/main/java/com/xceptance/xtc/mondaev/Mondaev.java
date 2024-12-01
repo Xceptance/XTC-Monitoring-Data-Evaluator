@@ -113,6 +113,8 @@ public class Mondaev implements Runnable
 		System.out.println("=== Scenarios");
 		scenarios.forEach(System.out::println);
 
+		System.out.format("================================%n");
+
 		// we spin over scenarios first and create two column for the locations
 		for (String scenario : scenarios)
 		{
@@ -327,6 +329,14 @@ public class Mondaev implements Runnable
 			}
 		}
 
+//		columns.parallelStream().forEach(col ->
+//		{
+//			for (var row : result.data())
+//			{
+//				col.process(row);
+//			}
+//		});
+
 		// header
 		if (printHeader)
 		{
@@ -335,21 +345,6 @@ public class Mondaev implements Runnable
 
 		// values
 		System.out.println(columns.stream().map(Cell::value).collect(Collectors.joining(",")));
-
-		//		for (var s : buckets.entrySet().stream().map(e -> e.getValue()).sorted().toList())
-		//		{
-		//			for (var l : locations)
-		//			{
-		//				var joiner = new StringJoiner(",");
-		//
-		//				// values
-		//				for (var col : cols)
-		//				{
-		//					joiner.add(col.apply(s, l));
-		//				}
-		//				System.out.println(joiner);
-		//			}
-		//		}
 	}
 
 	public static void main( String[] args )
